@@ -1,0 +1,534 @@
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import { useAppStore } from '@/lib/store'
+import { LETTER_TYPES, LETTER_FIELDS, LetterField } from '@/lib/letter-types'
+import { formatDate, getStatusBadgeClass, getStatusLabel, getRomanMonth, formatDateLong } from '@/lib/helpers'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { FileText, Eye, Download, Clock, CheckCircle, XCircle, MessageSquare, Mail, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
+
+// RT Address constant
+const RT_ADDRESS = {
+  rt: '002',
+  rw: '013',
+  desa: 'Pasireurih',
+  kecamatan: 'Tamansari',
+  kabupaten: 'Kabupaten Bogor',
+  fullAddress: 'Perumahan Ciapus Mountain View RT 002 RW 013 Desa Pasireurih Kecamatan Tamansari Kabupaten Bogor',
+  shortAddress: 'RT 002 RW 013 Desa Pasireurih',
+  letterHeader: 'KETUA RT 002 RW 013 DESA PASIREURIH',
+  letterSubHeader: 'KECAMATAN TAMANSARI - KABUPATEN BOGOR',
+  letterLocation: 'Bogor',
+  stampText: 'RT 002\nRW 013',
+}
+
+interface Letter {
+  id: string
+  userId: string
+  jenisSurat: string
+  dataSurat: Record<string, string>
+  keperluan: string
+  status: string
+  nomorSurat: string | null
+  createdAt: string
+}
+
+interface FamilyData {
+  namaKk: string
+  tempatLahir: string
+  tanggalLahir: string
+  jenisKelamin: string
+  agama: string
+  pekerjaan: string
+  noHp: string
+}
+
+export default function SuratPage() {
+  const { user } = useAppStore()
+  const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [formData, setFormData] = useState<Record<string, string>>({})
+  const [letters, setLetters] = useState<Letter[]>([])
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewLetter, setPreviewLetter] = useState<Letter | null>(null)
+  const [detailLetter, setDetailLetter] = useState<Letter | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [familyData, setFamilyData] = useState<FamilyData | null>(null)
+  const [autoFilled, setAutoFilled] = useState(false)
+
+  const hasLoaded = useRef(false)
+  useEffect(() => {
+    if (hasLoaded.current || !user) return
+    hasLoaded.current = true
+    const loadData = async () => {
+      const [lettersRes, familyRes] = await Promise.all([
+        fetch(`/api/letters?userId=${user.id}`),
+        fetch(`/api/family?userId=${user.id}`),
+      ])
+      if (lettersRes.ok) {
+        const data = await lettersRes.json()
+        setLetters(data.map((l: Letter) => ({ ...l, dataSurat: typeof l.dataSurat === 'string' ? JSON.parse(l.dataSurat) : l.dataSurat })))
+      }
+      if (familyRes.ok) {
+        const data = await familyRes.json()
+        if (data) {
+          setFamilyData({
+            namaKk: data.namaKk || '',
+            tempatLahir: data.tempatLahir || '',
+            tanggalLahir: data.tanggalLahir || '',
+            jenisKelamin: data.jenisKelamin || '',
+            agama: data.agama || '',
+            pekerjaan: data.pekerjaan || '',
+            noHp: data.noHp || '',
+          })
+        }
+      }
+    }
+    loadData()
+  }, [user])
+
+  const selectType = (typeId: string) => {
+    setSelectedType(typeId)
+    setAutoFilled(false)
+
+    // Auto-fill from family data if available
+    if (familyData) {
+      const fields = LETTER_FIELDS[typeId] || []
+      const autoData: Record<string, string> = {}
+
+      for (const f of fields) {
+        // Map family data fields to letter form fields
+        if (f.field === 'namaLengkap' && familyData.namaKk) {
+          autoData.namaLengkap = familyData.namaKk
+        } else if (f.field === 'namaKK' && familyData.namaKk) {
+          autoData.namaKK = familyData.namaKk
+        } else if (f.field === 'tempatLahir' && familyData.tempatLahir) {
+          autoData.tempatLahir = familyData.tempatLahir
+        } else if (f.field === 'tanggalLahir' && familyData.tanggalLahir) {
+          autoData.tanggalLahir = familyData.tanggalLahir
+        } else if (f.field === 'jenisKelamin' && familyData.jenisKelamin) {
+          autoData.jenisKelamin = familyData.jenisKelamin
+        } else if (f.field === 'agama' && familyData.agama) {
+          autoData.agama = familyData.agama
+        } else if (f.field === 'pekerjaan' && familyData.pekerjaan) {
+          autoData.pekerjaan = familyData.pekerjaan
+        }
+      }
+
+      if (Object.keys(autoData).length > 0) {
+        setFormData(autoData)
+        setAutoFilled(true)
+      } else {
+        setFormData({})
+      }
+    } else {
+      setFormData({})
+    }
+  }
+
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handlePreview = () => {
+    if (!selectedType) return
+    const fields = LETTER_FIELDS[selectedType] || []
+    for (const f of fields) {
+      if (f.required && !formData[f.field]) {
+        toast.error(`Mohon isi: ${f.label}`)
+        return
+      }
+    }
+    const letter: Letter = {
+      id: 'preview',
+      userId: user?.id || '',
+      jenisSurat: selectedType,
+      dataSurat: { ...formData, alamat: RT_ADDRESS.fullAddress },
+      keperluan: formData.keperluan || '',
+      status: 'preview',
+      nomorSurat: null,
+      createdAt: new Date().toISOString(),
+    }
+    setPreviewLetter(letter)
+    setPreviewOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !selectedType) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/letters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          jenisSurat: selectedType,
+          dataSurat: JSON.stringify(formData),
+          keperluan: formData.keperluan || '',
+        }),
+      })
+      if (res.ok) {
+        toast.success('Pengajuan surat berhasil dikirim!')
+        setSelectedType(null)
+        setFormData({})
+        setAutoFilled(false)
+        // Reload letters
+        const res2 = await fetch(`/api/letters?userId=${user.id}`)
+        if (res2.ok) {
+          const data2 = await res2.json()
+          setLetters(data2.map((l: Letter) => ({ ...l, dataSurat: typeof l.dataSurat === 'string' ? JSON.parse(l.dataSurat) : l.dataSurat })))
+        }
+      } else {
+        toast.error('Gagal mengajukan surat')
+      }
+    } catch {
+      toast.error('Terjadi kesalahan')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const openHistoryPreview = (letter: Letter) => {
+    setPreviewLetter(letter)
+    setPreviewOpen(true)
+  }
+
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const renderFormField = (f: LetterField) => {
+    const isAutoFilledField = autoFilled && familyData && [
+      'namaLengkap', 'namaKK', 'tempatLahir', 'tanggalLahir',
+      'jenisKelamin', 'agama', 'pekerjaan'
+    ].includes(f.field) && formData[f.field]
+
+    if (f.type === 'select') {
+      return (
+        <div key={f.field}>
+          <Label className="block text-sm font-medium text-slate-700 mb-2">
+            {f.label}{f.required ? ' *' : ''}
+            {isAutoFilledField && (
+              <span className="ml-1.5 inline-flex items-center text-[10px] text-teal-600 font-normal">
+                <Sparkles className="w-3 h-3 mr-0.5" /> Otomatis
+              </span>
+            )}
+          </Label>
+          <select
+            value={formData[f.field] || ''}
+            onChange={(e) => handleFieldChange(f.field, e.target.value)}
+            className={`w-full px-4 py-3 border rounded-xl text-slate-800 ${isAutoFilledField ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'}`}
+          >
+            <option value="">Pilih {f.label}</option>
+            {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      )
+    }
+    if (f.type === 'textarea') {
+      return (
+        <div key={f.field}>
+          <Label className="block text-sm font-medium text-slate-700 mb-2">
+            {f.label}{f.required ? ' *' : ''}
+          </Label>
+          <Textarea
+            value={formData[f.field] || ''}
+            onChange={(e) => handleFieldChange(f.field, e.target.value)}
+            placeholder={`Masukkan ${f.label.toLowerCase()}...`}
+            rows={f.rows || 3}
+            className="bg-slate-50 border-slate-200 rounded-xl resize-none"
+          />
+        </div>
+      )
+    }
+    return (
+      <div key={f.field}>
+        <Label className="block text-sm font-medium text-slate-700 mb-2">
+          {f.label}{f.required ? ' *' : ''}
+          {isAutoFilledField && (
+            <span className="ml-1.5 inline-flex items-center text-[10px] text-teal-600 font-normal">
+              <Sparkles className="w-3 h-3 mr-0.5" /> Otomatis
+            </span>
+          )}
+        </Label>
+        <Input
+          type={f.type}
+          value={formData[f.field] || ''}
+          onChange={(e) => handleFieldChange(f.field, e.target.value)}
+          placeholder={`Masukkan ${f.label.toLowerCase()}...`}
+          className={`py-3 border rounded-xl ${isAutoFilledField ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200'}`}
+        />
+      </div>
+    )
+  }
+
+  const renderLetterDocument = (letter: Letter) => {
+    const typeName = LETTER_TYPES.find((t) => t.id === letter.jenisSurat)?.name || letter.jenisSurat
+    const data = letter.dataSurat || {}
+    const isApproved = letter.status === 'approved'
+    const num = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')
+
+    const renderRows = () => {
+      const common = [
+        ['Nama Lengkap', data.namaLengkap || data.namaKK || '-'],
+        ['TTL', `${data.tempatLahir || '-'}, ${formatDateLong(data.tanggalLahir)}`],
+      ]
+      const extraMap: Record<string, string[][]> = {
+        domisili: [['Jenis Kelamin', data.jenisKelamin], ['Pekerjaan', data.pekerjaan], ['Agama', data.agama], ['Status', data.statusPerkawinan], ['WN', data.kewarganegaraan]],
+        nikah: [['Jenis Kelamin', data.jenisKelamin], ['Agama', data.agama], ['Status', data.statusPerkawinan], ['Calon', data.namaCalon]],
+        sekolah: [['Jenis Kelamin', data.jenisKelamin], ['Agama', data.agama], ['Orang Tua', data.namaOrangTua], ['Sekolah', data.namaSekolah]],
+        beasiswa: [['Jenis Kelamin', data.jenisKelamin], ['Pendidikan', data.pendidikanTerakhir], ['Institusi', data.institusi], ['Program', data.programBeasiswa]],
+        kepolisian: [['Jenis Kelamin', data.jenisKelamin], ['Pekerjaan', data.pekerjaan], ['Agama', data.agama], ['Status', data.statusPerkawinan]],
+        mutasi: [['Jumlah Anggota', data.jumlahAnggota], ['Alamat Asal', data.alamatAsal], ['RT/RW Asal', `${data.rtAsal || '-'}/${data.rwAsal || '-'}`]],
+      }
+      const all = [...common, ...(extraMap[letter.jenisSurat] || [])]
+      return all.map((r, i) => (
+        <tr key={i} className="border-b border-slate-100">
+          <td className="py-1.5 pr-4 text-sm text-slate-600 w-40 align-top">{r[0]}</td>
+          <td className="py-1.5 text-sm font-medium text-slate-800">: {r[1]}</td>
+        </tr>
+      ))
+    }
+
+    return (
+      <div className="bg-white p-8 max-w-2xl mx-auto" id="letter-document">
+        <div className="text-center mb-5 border-b-2 border-black pb-3">
+          <p className="text-xs font-bold tracking-wide">PERUMAHAN CIAPUS MOUNTAIN VIEW</p>
+          <p className="text-xs font-bold tracking-wide">{RT_ADDRESS.letterHeader}</p>
+          <p className="text-xs font-bold tracking-wide">{RT_ADDRESS.letterSubHeader}</p>
+        </div>
+        <div className="text-center font-bold text-base underline mb-2">
+          SURAT KETERANGAN {typeName.toUpperCase()}
+        </div>
+        <p className="text-center text-xs mb-4">
+          No. {num}/Sekrt-RT/{getRomanMonth(new Date().getMonth() + 1)}/{new Date().getFullYear()}
+        </p>
+        <div className="text-sm leading-relaxed mb-4">
+          <p className="mb-3">
+            Yang bertanda tangan di bawah ini Ketua {RT_ADDRESS.fullAddress}
+            dengan ini menerangkan bahwa:
+          </p>
+          <table className="w-full mb-3">{renderRows()}</table>
+          <p className="mb-3">
+            Orang tersebut di atas adalah benar-benar warga kami dan berdomisili di {RT_ADDRESS.shortAddress}.
+          </p>
+          <p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+        </div>
+        <div className="text-right mt-10">
+          <p className="mr-16 mb-1 text-sm">{RT_ADDRESS.letterLocation}, {formatDateLong(new Date().toISOString())}</p>
+          <p className="mr-16 mb-8 text-sm">Ketua RT {RT_ADDRESS.rt} RW {RT_ADDRESS.rw}</p>
+          {isApproved ? (
+            <div className="mr-16 inline-block">
+              <p className="font-bold text-sm underline">(Tanda Tangan &amp; Stempel)</p>
+              <div className="mt-2 inline-flex w-24 h-24 border-4 border-blue-600 rounded-full items-center justify-center opacity-30 rotate-12">
+                <span className="text-blue-600 font-bold text-xs text-center">RT {RT_ADDRESS.rt}<br />RW {RT_ADDRESS.rw}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mr-16 text-center text-slate-400 italic text-sm border-2 border-dashed border-slate-300 rounded-lg p-4 inline-block">
+              <p>Tanda Tangan &amp; Stempel</p>
+              <p className="text-xs">(Setelah disetujui)</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-5 py-6">
+      <h2 className="text-xl font-bold text-slate-800 mb-2">Pengajuan Surat</h2>
+      <p className="text-sm text-slate-500 mb-6">Ajukan surat keterangan RT</p>
+
+      {/* Auto-fill notice */}
+      {familyData && (
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 mb-4 flex items-start gap-2">
+          <Sparkles className="w-4 h-4 text-teal-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-teal-700">Data otomatis tersedia</p>
+            <p className="text-[11px] text-teal-600">Data keluarga Anda akan otomatis mengisi kolom yang tersimpan. Anda tetap bisa mengubahnya.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Letter Type Grid */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {LETTER_TYPES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => selectType(t.id)}
+            className={`p-4 bg-white rounded-2xl border-2 text-center transition-all active:scale-95 ${
+              selectedType === t.id ? 'border-teal-500 bg-teal-50' : 'border-slate-200 hover:border-teal-300'
+            }`}
+          >
+            <div className={`w-12 h-12 bg-${t.color}-100 rounded-xl flex items-center justify-center mx-auto mb-2`}>
+              <span className="text-2xl">{t.icon}</span>
+            </div>
+            <span className="text-xs font-medium text-slate-700">{t.name}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Dynamic Form */}
+      {selectedType && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 mb-6 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-800">Form Pengajuan</h3>
+            <Badge className="bg-teal-100 text-teal-700">
+              {LETTER_TYPES.find((t) => t.id === selectedType)?.name}
+            </Badge>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {(LETTER_FIELDS[selectedType] || []).map(renderFormField)}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <Button
+                type="button"
+                onClick={handlePreview}
+                variant="secondary"
+                className="w-full py-3 font-semibold rounded-xl"
+              >
+                <Eye className="w-4 h-4 mr-2" /> Preview Surat
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl"
+              >
+                {submitting ? 'Mengirim...' : 'Ajukan Surat'}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Letter History */}
+      <div>
+        <h3 className="font-semibold text-slate-800 mb-3">Riwayat Pengajuan</h3>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {letters.length === 0 ? (
+            <p className="text-center text-slate-500 py-4 text-sm">Belum ada pengajuan</p>
+          ) : (
+            letters.map((l) => {
+              const lt = LETTER_TYPES.find((t) => t.id === l.jenisSurat)
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => setDetailLetter(l)}
+                  className="w-full text-left bg-white rounded-xl p-4 border border-slate-100 hover:border-teal-200 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg">{lt?.icon || '📄'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-slate-800 text-sm">{lt?.name || l.jenisSurat}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(l.status)}`}>
+                          {getStatusLabel(l.status)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 truncate">{l.keperluan || '-'}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-slate-400">{formatDate(l.createdAt)}</span>
+                        {l.nomorSurat && <span className="text-xs text-teal-600 font-medium">No: {l.nomorSurat}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-5 py-4 border-b border-slate-200 flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-lg font-bold">Preview Surat</DialogTitle>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handlePrint} className="bg-teal-600 hover:bg-teal-700">
+                <Download className="w-4 h-4 mr-1" /> PDF
+              </Button>
+              <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50">
+                <MessageSquare className="w-4 h-4 mr-1" /> WA
+              </Button>
+              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
+                <Mail className="w-4 h-4 mr-1" /> Email
+              </Button>
+            </div>
+          </DialogHeader>
+          <ScrollArea className="h-[70vh] bg-slate-100 p-4">
+            {previewLetter && renderLetterDocument(previewLetter)}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Modal */}
+      <Dialog open={!!detailLetter} onOpenChange={() => setDetailLetter(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detail Pengajuan</DialogTitle>
+          </DialogHeader>
+          {detailLetter && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStatusBadgeClass(detailLetter.status)}`}>
+                  {getStatusLabel(detailLetter.status)}
+                </span>
+                {detailLetter.nomorSurat && (
+                  <span className="text-sm text-slate-500">No: {detailLetter.nomorSurat}</span>
+                )}
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Jenis</span>
+                  <span className="font-medium">{LETTER_TYPES.find((t) => t.id === detailLetter.jenisSurat)?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Tanggal</span>
+                  <span className="font-medium">{formatDate(detailLetter.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Keperluan</span>
+                  <span className="font-medium text-right max-w-[60%]">{detailLetter.keperluan || '-'}</span>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">Data Isian</h4>
+                <div className="bg-white rounded-xl border border-slate-200 p-4 text-sm space-y-1">
+                  {Object.entries(detailLetter.dataSurat || {}).map(([k, v]) => (
+                    <div key={k} className="flex py-1 border-b border-slate-100 last:border-0">
+                      <span className="text-slate-500 w-1/3 capitalize">{k.replace(/([A-Z])/g, ' $1')}</span>
+                      <span className="font-medium">{v || '-'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {detailLetter.status === 'approved' ? (
+                <Button
+                  onClick={() => { openHistoryPreview(detailLetter); setDetailLetter(null) }}
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl"
+                >
+                  <FileText className="w-4 h-4 mr-2" /> Lihat Dokumen
+                </Button>
+              ) : (
+                <div className="text-center py-4 text-slate-500 text-sm">
+                  <Clock className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                  Menunggu persetujuan Ketua RT
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
