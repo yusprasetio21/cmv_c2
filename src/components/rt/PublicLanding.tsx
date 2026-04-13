@@ -24,7 +24,7 @@ interface Announcement {
 }
 
 export default function PublicLanding() {
-  const { setShowLogin } = useAppStore()
+  const { setShowLogin, organization } = useAppStore()
   const [stats, setStats] = useState<PublicStats | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
@@ -35,9 +35,10 @@ export default function PublicLanding() {
     let cancelled = false
     const load = async () => {
       try {
+        const orgId = organization?.id || ''
         const [statsRes, annRes] = await Promise.all([
-          fetch('/api/public/stats'),
-          fetch('/api/announcements'),
+          fetch(`/api/public/stats${orgId ? `?organizationId=${orgId}` : ''}`),
+          fetch(`/api/announcements${orgId ? `?organizationId=${orgId}` : ''}`),
         ])
         if (cancelled) return
         if (statsRes.ok) setStats(await statsRes.json())
@@ -46,7 +47,7 @@ export default function PublicLanding() {
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [organization])
 
   // Banner auto-rotate
   useEffect(() => {
@@ -99,12 +100,16 @@ export default function PublicLanding() {
         <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/3" />
 
         <div className="relative z-10 px-6 pt-10 pb-8 text-center">
-          <div className="w-16 h-16 bg-white rounded-2xl shadow-xl mx-auto mb-4 flex items-center justify-center">
-            <Mountain className="w-10 h-10 text-teal-600" />
+          <div className="w-16 h-16 bg-white rounded-2xl shadow-xl mx-auto mb-4 flex items-center justify-center overflow-hidden">
+            {organization?.logoUrl ? (
+              <img src={organization.logoUrl} alt={organization.name} className="w-12 h-12 object-contain" />
+            ) : (
+              <Mountain className="w-10 h-10 text-teal-600" />
+            )}
           </div>
-          <h1 className="text-xl font-bold text-white mb-1">RT Ciapus Mountain View</h1>
-          <p className="text-teal-100 text-sm mb-1">Blok C • RT 002 RW 013</p>
-          <p className="text-teal-200/70 text-xs">Desa Pasireurih, Kec. Tamansari, Kab. Bogor</p>
+          <h1 className="text-xl font-bold text-white mb-1">{organization?.name || 'RT Digital'}</h1>
+          <p className="text-teal-100 text-sm mb-1">RT {organization?.rtNumber || '...'} RW {organization?.rwNumber || '...'}</p>
+          <p className="text-teal-200/70 text-xs">{organization ? `Desa ${organization.kelurahan}, Kec. ${organization.kecamatan}, ${organization.kabupaten}` : 'Sistem Manajemen RT Terpadu'}</p>
         </div>
 
         {/* Stats Row */}
@@ -258,7 +263,7 @@ export default function PublicLanding() {
 
         {/* Footer */}
         <div className="text-center pt-4 pb-2">
-          <p className="text-xs text-slate-400">© 2025 Perumahan Ciapus Mountain View RT 002 RW 013</p>
+          <p className="text-xs text-slate-400">© 2025 {organization?.name || 'RT Digital'}</p>
           <p className="text-[10px] text-slate-300 mt-1">RT Digital - Sistem Manajemen RT Terpadu</p>
         </div>
       </div>

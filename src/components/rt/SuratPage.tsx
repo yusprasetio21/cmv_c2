@@ -14,8 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { FileText, Eye, Download, Clock, CheckCircle, XCircle, MessageSquare, Mail, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
-// RT Address constant
-const RT_ADDRESS = {
+// RT Address - will use organization data when available
+const DEFAULT_ADDRESS = {
   rt: '002',
   rw: '013',
   desa: 'Pasireurih',
@@ -51,7 +51,7 @@ interface FamilyData {
 }
 
 export default function SuratPage() {
-  const { user } = useAppStore()
+  const { user, organization } = useAppStore()
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [letters, setLetters] = useState<Letter[]>([])
@@ -149,7 +149,7 @@ export default function SuratPage() {
       id: 'preview',
       userId: user?.id || '',
       jenisSurat: selectedType,
-      dataSurat: { ...formData, alamat: RT_ADDRESS.fullAddress },
+      dataSurat: { ...formData, alamat: organization?.addressFull || DEFAULT_ADDRESS.fullAddress },
       keperluan: formData.keperluan || '',
       status: 'preview',
       nomorSurat: null,
@@ -275,6 +275,23 @@ export default function SuratPage() {
     const isApproved = letter.status === 'approved'
     const num = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')
 
+    // Use org data or fallback to defaults
+    const rtAddr = organization ? {
+      rt: organization.rtNumber,
+      rw: organization.rwNumber,
+      fullAddress: organization.addressFull,
+      shortAddress: `RT ${organization.rtNumber} RW ${organization.rwNumber} Desa ${organization.kelurahan}`,
+      letterHeader: `KETUA RT ${organization.rtNumber} RW ${organization.rwNumber} DESA ${organization.kelurahan.toUpperCase()}`,
+      letterSubHeader: `KECAMATAN ${organization.kecamatan.toUpperCase()} - ${organization.kabupaten.toUpperCase()}`,
+      letterLocation: organization.kabupaten.replace('Kabupaten ', '').replace('Kab. ', ''),
+      stampText: `RT ${organization.rtNumber}\nRW ${organization.rwNumber}`,
+      ketuaRtName: organization.ketuaRtName,
+      logoUrl: organization.logoUrl,
+      stampUrl: organization.stampUrl,
+      signatureUrl: organization.signatureUrl,
+      name: organization.name,
+    } : { ...DEFAULT_ADDRESS, ketuaRtName: '', logoUrl: null, stampUrl: null, signatureUrl: null, name: '' }
+
     const renderRows = () => {
       const common = [
         ['Nama Lengkap', data.namaLengkap || data.namaKK || '-'],
@@ -300,9 +317,15 @@ export default function SuratPage() {
     return (
       <div className="bg-white p-8 max-w-2xl mx-auto" id="letter-document">
         <div className="text-center mb-5 border-b-2 border-black pb-3">
-          <p className="text-xs font-bold tracking-wide">PERUMAHAN CIAPUS MOUNTAIN VIEW</p>
-          <p className="text-xs font-bold tracking-wide">{RT_ADDRESS.letterHeader}</p>
-          <p className="text-xs font-bold tracking-wide">{RT_ADDRESS.letterSubHeader}</p>
+          <div className="flex items-center justify-center gap-3 mb-1">
+            {rtAddr.logoUrl && <img src={rtAddr.logoUrl} alt="Logo" className="w-14 h-14 object-contain" />}
+            <div>
+              <p className="text-xs font-bold tracking-wide">{rtAddr.name?.toUpperCase() || ''}</p>
+              <p className="text-xs font-bold tracking-wide">{rtAddr.letterHeader}</p>
+              <p className="text-xs font-bold tracking-wide">{rtAddr.letterSubHeader}</p>
+            </div>
+            {rtAddr.stampUrl && <img src={rtAddr.stampUrl} alt="Stempel" className="w-14 h-14 object-contain opacity-40" />}
+          </div>
         </div>
         <div className="text-center font-bold text-base underline mb-2">
           SURAT KETERANGAN {typeName.toUpperCase()}
@@ -312,24 +335,35 @@ export default function SuratPage() {
         </p>
         <div className="text-sm leading-relaxed mb-4">
           <p className="mb-3">
-            Yang bertanda tangan di bawah ini Ketua {RT_ADDRESS.fullAddress}
+            Yang bertanda tangan di bawah ini Ketua {rtAddr.fullAddress}
             dengan ini menerangkan bahwa:
           </p>
           <table className="w-full mb-3">{renderRows()}</table>
           <p className="mb-3">
-            Orang tersebut di atas adalah benar-benar warga kami dan berdomisili di {RT_ADDRESS.shortAddress}.
+            Orang tersebut di atas adalah benar-benar warga kami dan berdomisili di {rtAddr.shortAddress}.
           </p>
           <p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
         </div>
         <div className="text-right mt-10">
-          <p className="mr-16 mb-1 text-sm">{RT_ADDRESS.letterLocation}, {formatDateLong(new Date().toISOString())}</p>
-          <p className="mr-16 mb-8 text-sm">Ketua RT {RT_ADDRESS.rt} RW {RT_ADDRESS.rw}</p>
+          <p className="mr-16 mb-1 text-sm">{rtAddr.letterLocation}, {formatDateLong(new Date().toISOString())}</p>
+          <p className="mr-16 mb-8 text-sm">Ketua RT {rtAddr.rt} RW {rtAddr.rw}</p>
           {isApproved ? (
-            <div className="mr-16 inline-block">
+            <div className="mr-16 inline-block relative">
               <p className="font-bold text-sm underline">(Tanda Tangan &amp; Stempel)</p>
-              <div className="mt-2 inline-flex w-24 h-24 border-4 border-blue-600 rounded-full items-center justify-center opacity-30 rotate-12">
-                <span className="text-blue-600 font-bold text-xs text-center">RT {RT_ADDRESS.rt}<br />RW {RT_ADDRESS.rw}</span>
-              </div>
+              {/* Digital Signature */}
+              {rtAddr.signatureUrl && (
+                <img src={rtAddr.signatureUrl} alt="TTD" className="w-24 h-16 object-contain mt-1 mx-auto" />
+              )}
+              {/* Stamp overlay */}
+              {rtAddr.stampUrl && (
+                <img src={rtAddr.stampUrl} alt="Stempel" className="w-20 h-20 object-contain absolute -right-4 bottom-0 opacity-30 rotate-12" />
+              )}
+              {!rtAddr.signatureUrl && !rtAddr.stampUrl && (
+                <div className="mt-2 inline-flex w-24 h-24 border-4 border-blue-600 rounded-full items-center justify-center opacity-30 rotate-12">
+                  <span className="text-blue-600 font-bold text-xs text-center">RT {rtAddr.rt}<br />RW {rtAddr.rw}</span>
+                </div>
+              )}
+              <p className="text-sm font-medium mt-2">{rtAddr.ketuaRtName}</p>
             </div>
           ) : (
             <div className="mr-16 text-center text-slate-400 italic text-sm border-2 border-dashed border-slate-300 rounded-lg p-4 inline-block">

@@ -2,7 +2,7 @@
 
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
-import { Users, LogOut, Shield, FileText, CreditCard, Bell, Megaphone, Settings, ChevronRight } from 'lucide-react'
+import { Users, LogOut, Shield, FileText, CreditCard, Bell, Megaphone, Settings, ChevronRight, Mountain } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -221,7 +221,7 @@ export default function AccountPage() {
           <span className="text-teal-700 font-bold text-2xl">{initials}</span>
         </div>
         <h2 className="text-lg font-bold text-slate-800">{user?.namaLengkap}</h2>
-        <p className="text-sm text-slate-500">Rumah: {user?.house?.nomorRumah || user?.rumahId || '-'}</p>
+        <p className="text-sm text-slate-500">Rumah: {user?.house ? `${user.house.nomorRumah} (Blok ${user.house.blok})` : user?.rumahId || '-'}</p>
         <Badge className="mt-2 bg-teal-100 text-teal-700">{user?.role === 'admin' ? 'Ketua RT' : 'Warga'}</Badge>
       </div>
 
@@ -238,8 +238,8 @@ export default function AccountPage() {
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-medium text-slate-800">Kelola Warga</p>
-                <p className="text-xs text-slate-500">Tambah, edit, hapus warga</p>
+                <p className="font-medium text-slate-800">Kelola Warga & Rumah</p>
+                <p className="text-xs text-slate-500">Tambah, edit, hapus warga & rumah</p>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300" />
             </button>
@@ -268,6 +268,20 @@ export default function AccountPage() {
               <div className="flex-1 text-left">
                 <p className="font-medium text-slate-800">Kelola Surat</p>
                 <p className="text-xs text-slate-500">Persetujuan & manajemen surat</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </button>
+
+            <button
+              onClick={() => setPage('admin-settings')}
+              className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-slate-100"
+            >
+              <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
+                <Mountain className="w-5 h-5 text-teal-600" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-medium text-slate-800">Pengaturan RT</p>
+                <p className="text-xs text-slate-500">Data wilayah, logo, stempel, TTD</p>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300" />
             </button>

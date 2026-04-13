@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const notifications = data.map((n: { id: string; user_id: string; title: string; message: string; read: boolean; created_at: string }) => ({
+    const notifications = (data ?? []).map((n: { id: string; user_id: string; title: string; message: string; read: boolean; created_at: string }) => ({
       id: n.id,
       userId: n.user_id,
       title: n.title,

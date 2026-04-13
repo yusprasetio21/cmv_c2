@@ -5,13 +5,15 @@ import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Home, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Home, Lock, Eye, EyeOff, ArrowLeft, Mountain } from 'lucide-react'
 
 interface LoginPageProps {
   onBack?: () => void
+  organizationId?: string | null
+  orgName?: string | null
 }
 
-export default function LoginPage({ onBack }: LoginPageProps) {
+export default function LoginPage({ onBack, organizationId, orgName }: LoginPageProps) {
   const { login } = useAppStore()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -31,7 +33,7 @@ export default function LoginPage({ onBack }: LoginPageProps) {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, organizationId }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -48,7 +50,6 @@ export default function LoginPage({ onBack }: LoginPageProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Back button */}
       {onBack && (
         <div className="px-4 pt-4">
           <button
@@ -65,25 +66,29 @@ export default function LoginPage({ onBack }: LoginPageProps) {
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         <div className="relative z-10 text-center">
           <div className="w-20 h-20 bg-white rounded-2xl shadow-xl mx-auto mb-4 flex items-center justify-center">
-            <Home className="w-12 h-12 text-teal-600" />
+            {orgName ? (
+              <Home className="w-12 h-12 text-teal-600" />
+            ) : (
+              <Mountain className="w-12 h-12 text-teal-600" />
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">RT Digital</h1>
-          <p className="text-teal-100 text-sm">Sistem Manajemen RT Terpadu</p>
+          <h1 className="text-2xl font-bold text-white mb-1">{orgName || 'RT Digital'}</h1>
+          <p className="text-teal-100 text-sm">Masuk ke akun Anda</p>
         </div>
       </div>
 
       <div className="px-6 -mt-8 relative z-10">
         <div className="bg-white rounded-2xl shadow-lg p-6 animate-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-lg font-semibold text-slate-800 mb-6">Masuk ke Akun Anda</h2>
+          <h2 className="text-lg font-semibold text-slate-800 mb-6">Login</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label className="block text-sm font-medium text-slate-700 mb-2">Nomor Rumah / Username</Label>
+              <Label className="block text-sm font-medium text-slate-700 mb-2">Username</Label>
               <div className="relative">
                 <Home className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <Input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: C1-5 atau admin"
+                  placeholder="Username Anda"
                   className="pl-12 py-3.5 bg-slate-50 border-slate-200 rounded-xl"
                 />
               </div>
@@ -119,16 +124,6 @@ export default function LoginPage({ onBack }: LoginPageProps) {
               {loading ? 'Memproses...' : 'Masuk'}
             </Button>
           </form>
-          <p className="text-center text-sm text-slate-500 mt-6">Belum punya akun? Hubungi Ketua RT</p>
-        </div>
-
-        <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200 mb-6">
-          <p className="text-xs font-medium text-amber-800 mb-2">Demo Accounts:</p>
-          <div className="text-xs text-amber-700 space-y-1">
-            <p><strong>Admin:</strong> admin / admin123</p>
-            <p><strong>Warga C1-5:</strong> C1-5 / Sarah</p>
-            <p><strong>Warga C1-3:</strong> C1-3 / Budi</p>
-          </div>
         </div>
       </div>
     </div>

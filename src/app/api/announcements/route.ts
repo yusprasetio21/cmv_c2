@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const organizationId = searchParams.get('organizationId')
+
+    let query = supabase
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -18,6 +27,7 @@ export async function GET() {
       isi: a.isi as string,
       tipe: a.tipe as string,
       gambarUrl: (a.gambar_url as string) || null,
+      organizationId: (a.organization_id as string) || null,
       createdAt: a.created_at as string,
     }))
 
@@ -30,18 +40,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { judul, isi, tipe, gambarUrl } = body
+    const { judul, isi, tipe, gambarUrl, organizationId } = body
 
     if (!judul || !isi || !tipe) {
       return NextResponse.json({ error: 'Judul, isi, dan tipe wajib diisi' }, { status: 400 })
     }
 
     const insertData: Record<string, unknown> = { judul, isi, tipe }
-
-    // Try with gambar_url first
-    if (gambarUrl) {
-      insertData.gambar_url = gambarUrl
-    }
+    if (gambarUrl) insertData.gambar_url = gambarUrl
+    if (organizationId) insertData.organization_id = organizationId
 
     let { data, error } = await supabase
       .from('announcements')
@@ -71,6 +78,7 @@ export async function POST(request: NextRequest) {
       isi: data.isi,
       tipe: data.tipe,
       gambarUrl: data.gambar_url || null,
+      organizationId: data.organization_id || null,
       createdAt: data.created_at,
     }, { status: 201 })
   } catch {

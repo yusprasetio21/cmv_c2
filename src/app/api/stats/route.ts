@@ -1,42 +1,56 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const organizationId = searchParams.get('organizationId')
+
     // Total warga
-    const { count: totalWarga } = await supabase
+    let userQuery = supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'warga')
+    if (organizationId) userQuery = userQuery.eq('organization_id', organizationId)
+    const { count: totalWarga } = await userQuery
 
     // Total approved payments sum
-    const { data: paymentData } = await supabase
+    let payQuery = supabase
       .from('payments')
       .select('nominal')
       .eq('status', 'approved')
-
+    if (organizationId) payQuery = payQuery.eq('organization_id', organizationId)
+    const { data: paymentData } = await payQuery
     const totalKas = paymentData?.reduce((sum: number, p: { nominal: number }) => sum + p.nominal, 0) || 0
 
     // Total letters
-    const { count: totalSuratMasuk } = await supabase
+    let letAppQuery = supabase
       .from('letters')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'approved')
+    if (organizationId) letAppQuery = letAppQuery.eq('organization_id', organizationId)
+    const { count: totalSuratMasuk } = await letAppQuery
 
-    const { count: totalSuratKeluar } = await supabase
+    let letAllQuery = supabase
       .from('letters')
       .select('*', { count: 'exact', head: true })
+    if (organizationId) letAllQuery = letAllQuery.eq('organization_id', organizationId)
+    const { count: totalSuratKeluar } = await letAllQuery
 
     // Pending items for admin
-    const { count: pendingPayments } = await supabase
+    let pendPayQuery = supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
+    if (organizationId) pendPayQuery = pendPayQuery.eq('organization_id', organizationId)
+    const { count: pendingPayments } = await pendPayQuery
 
-    const { count: pendingLetters } = await supabase
+    let pendLetQuery = supabase
       .from('letters')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
+    if (organizationId) pendLetQuery = pendLetQuery.eq('organization_id', organizationId)
+    const { count: pendingLetters } = await pendLetQuery
 
     return NextResponse.json({
       totalWarga: totalWarga || 0,

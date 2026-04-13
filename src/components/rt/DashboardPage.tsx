@@ -25,7 +25,7 @@ interface Announcement {
 }
 
 export default function DashboardPage() {
-  const { user, setPage } = useAppStore()
+  const { user, setPage, organization } = useAppStore()
   const [stats, setStats] = useState<Stats | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [bannerIndex, setBannerIndex] = useState(0)
@@ -36,9 +36,10 @@ export default function DashboardPage() {
     let cancelled = false
     const load = async () => {
       try {
+        const orgId = organization?.id || ''
         const [statsRes, annRes] = await Promise.all([
-          fetch('/api/stats'),
-          fetch('/api/announcements'),
+          fetch(`/api/stats${orgId ? `?organizationId=${orgId}` : ''}`),
+          fetch(`/api/announcements${orgId ? `?organizationId=${orgId}` : ''}`),
         ])
         if (cancelled) return
         if (statsRes.ok) setStats(await statsRes.json())
@@ -50,7 +51,7 @@ export default function DashboardPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [organization])
 
   // Banner auto-rotate
   useEffect(() => {

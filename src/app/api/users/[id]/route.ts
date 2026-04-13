@@ -23,8 +23,8 @@ export async function GET(
     if (user.rumah_id) {
       const { data: houseData } = await supabase
         .from('houses')
-        .select('nomor_rumah, blok, status_rumah')
-        .eq('nomor_rumah', user.rumah_id)
+        .select('id, nomor_rumah, blok, status_rumah')
+        .or(`id.eq.${user.rumah_id},nomor_rumah.eq.${user.rumah_id}`)
         .single()
       if (houseData) {
         house = {
@@ -56,25 +56,36 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const { namaLengkap, password, role, rumahId } = body
+    const { namaLengkap, nama_lengkap, password, role, rumahId, rumah_id } = body
+
+    const nama = namaLengkap || nama_lengkap
+    const houseId = rumahId || rumah_id
 
     // Build update object with only provided fields
     const updateData: Record<string, unknown> = {}
-    if (namaLengkap !== undefined) updateData.nama_lengkap = namaLengkap
+    if (nama !== undefined) updateData.nama_lengkap = nama
     if (password !== undefined) updateData.password = password
     if (role !== undefined) updateData.role = role
-    if (rumahId !== undefined) updateData.rumah_id = rumahId || null
+    if (houseId !== undefined) updateData.rumah_id = houseId || null
 
-    // If rumahId provided, verify the house exists
-    if (rumahId) {
-      const { data: house } = await supabase
+    // If houseId provided, verify the house exists
+    if (houseId) {
+      const { data: houseById } = await supabase
         .from('houses')
-        .select('nomor_rumah')
-        .eq('nomor_rumah', rumahId)
+        .select('id')
+        .eq('id', houseId)
         .single()
 
-      if (!house) {
-        return NextResponse.json({ error: 'Nomor rumah tidak ditemukan' }, { status: 404 })
+      if (!houseById) {
+        const { data: houseByNumber } = await supabase
+          .from('houses')
+          .select('id')
+          .eq('nomor_rumah', houseId)
+          .single()
+
+        if (!houseByNumber) {
+          return NextResponse.json({ error: 'Rumah tidak ditemukan' }, { status: 404 })
+        }
       }
     }
 
@@ -97,8 +108,8 @@ export async function PATCH(
     if (data.rumah_id) {
       const { data: houseData } = await supabase
         .from('houses')
-        .select('nomor_rumah, blok, status_rumah')
-        .eq('nomor_rumah', data.rumah_id)
+        .select('id, nomor_rumah, blok, status_rumah')
+        .or(`id.eq.${data.rumah_id},nomor_rumah.eq.${data.rumah_id}`)
         .single()
       if (houseData) {
         house = {

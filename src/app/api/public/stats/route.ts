@@ -1,34 +1,44 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Total warga (residents)
-    const { count: totalWarga } = await supabase
+    const { searchParams } = new URL(request.url)
+    const organizationId = searchParams.get('organizationId')
+
+    // Total warga
+    let userQuery = supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'warga')
+    if (organizationId) userQuery = userQuery.eq('organization_id', organizationId)
+    const { count: totalWarga } = await userQuery
 
     // Total approved payments sum
-    const { data: paymentData } = await supabase
+    let payQuery = supabase
       .from('payments')
       .select('nominal')
       .eq('status', 'approved')
-
+    if (organizationId) payQuery = payQuery.eq('organization_id', organizationId)
+    const { data: paymentData } = await payQuery
     const totalKas = paymentData?.reduce((sum: number, p: { nominal: number }) => sum + p.nominal, 0) || 0
 
     // Recent payments count (last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const { count: recentPayments } = await supabase
+    let recentPayQuery = supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', thirtyDaysAgo.toISOString())
+    if (organizationId) recentPayQuery = recentPayQuery.eq('organization_id', organizationId)
+    const { count: recentPayments } = await recentPayQuery
 
     // Total announcements
-    const { count: totalAnnouncements } = await supabase
+    let annQuery = supabase
       .from('announcements')
       .select('*', { count: 'exact', head: true })
+    if (organizationId) annQuery = annQuery.eq('organization_id', organizationId)
+    const { count: totalAnnouncements } = await annQuery
 
     return NextResponse.json({
       totalWarga: totalWarga || 0,
