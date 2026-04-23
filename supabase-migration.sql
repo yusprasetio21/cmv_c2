@@ -110,3 +110,63 @@ CREATE POLICY "Allow delete logos" ON storage.objects FOR DELETE USING (bucket_i
 CREATE POLICY "Allow delete stamps" ON storage.objects FOR DELETE USING (bucket_id = 'stamps');
 CREATE POLICY "Allow delete signatures" ON storage.objects FOR DELETE USING (bucket_id = 'signatures');
 CREATE POLICY "Allow delete banners" ON storage.objects FOR DELETE USING (bucket_id = 'banners');
+
+-- =====================================================
+-- 10. Letter Numbering Configuration
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS letter_numbering (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
+  prefix TEXT NOT NULL DEFAULT 'Sekrt-RT',
+  separator TEXT NOT NULL DEFAULT '/',
+  format_template TEXT NOT NULL DEFAULT '{number}{separator}{prefix}{separator}{month_roman}{separator}{year}',
+  last_number INTEGER NOT NULL DEFAULT 0,
+  last_reset_year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM NOW()),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id)
+);
+
+-- Insert default numbering for existing organizations
+INSERT INTO letter_numbering (organization_id, prefix, last_number, last_reset_year)
+SELECT id, 'Sekrt-RT', 0, EXTRACT(YEAR FROM NOW())
+FROM organizations
+ON CONFLICT (organization_id) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_letter_numbering_org ON letter_numbering(organization_id);
+
+ALTER TABLE letter_numbering ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policy if any, then create allow-all policy
+DROP POLICY IF EXISTS "Allow all operations on letter_numbering" ON letter_numbering;
+CREATE POLICY "Allow all operations on letter_numbering" ON letter_numbering FOR ALL USING (true) WITH CHECK (true);
+
+-- Also grant usage on sequence if exists
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+-- =====================================================
+-- 11. Longgarkan kolom rumah_id di tabel users
+--     Karena UUID length = 36 karakter, VARCHAR(20) tidak cukup
+-- =====================================================
+
+ALTER TABLE users ALTER COLUMN rumah_id TYPE varchar(50);
+
+-- =====================================================
+-- 12. Tambah kolom NIK di tabel families
+-- =====================================================
+
+ALTER TABLE families ADD COLUMN IF NOT EXISTS nik TEXT;
+ALTER TABLE families ADD COLUMN IF NOT EXISTS nik_anggota JSONB DEFAULT '[]'::jsonb;
+
+-- =====================================================
+-- 13. Tambah kolom jenis_kelamin_detail di families members
+--     Untuk membedakan "Anak Laki-laki" dan "Anak Perempuan"
+--     Data disimpan di dalam kolom members (JSONB)
+--     Format: [{ namaLengkap, hubungan, tempatLahir, tanggalLahir, pekerjaanSekolah, nik }]
+-- =====================================================
+
+-- Catatan: kolom members sudah ada di tabel families dan bertipe JSONB
+-- Update tidak diperlukan untuk struktur JSON karena schema-less
