@@ -81,7 +81,7 @@ export default function AdminWargaPage() {
   const [formNomorRumah, setFormNomorRumah] = useState("");
   const [formBlok, setFormBlok] = useState("");
   const [formStatusRumah, setFormStatusRumah] = useState("empty");
-  const [newBlokInput, setNewBlokInput] = useState("");
+  const [newBlokInput, setNewBlokInput] = useState<string | null>(null);
 
   const hasLoaded = useRef(false);
 
@@ -298,7 +298,7 @@ export default function AdminWargaPage() {
   };
 
   const handleSubmitHouse = async () => {
-    const finalBlok = newBlokInput.trim() || formBlok;
+    const finalBlok = (newBlokInput || "").trim() || formBlok;
     if (!formNomorRumah || !finalBlok) {
       toast.error("Nomor rumah dan blok wajib diisi");
       return;
@@ -339,9 +339,18 @@ export default function AdminWargaPage() {
         });
         if (res.ok) {
           toast.success("Rumah baru berhasil ditambahkan");
-          setHouseFormOpen(false);
+          // Jangan tutup form biar user bisa tambah lagi
           fetchHouses();
-          fetchBloks();
+          // Set form ke blok yang baru ditambahkan
+          setFormBlok(finalBlok);
+          setNewBlokInput(null);
+          // Refresh bloks untuk dropdown
+          await fetchBloks();
+          setFormNomorRumah("");
+          setFormStatusRumah("empty");
+          toast.success(
+            "Rumah baru berhasil ditambahkan. Silakan tambah lagi atau tutup.",
+          );
         } else {
           const data = await res.json();
           toast.error(data.error || "Gagal menambahkan rumah");
@@ -519,7 +528,7 @@ export default function AdminWargaPage() {
                             Rumah:{" "}
                             <span className="font-medium text-slate-700">
                               {u.house
-                                ? `${u.house.nomorRumah} (Blok ${u.house.blok})`
+                                ? `Blok ${u.house.blok} - ${u.house.nomorRumah}`
                                 : "-"}
                             </span>
                           </p>
@@ -696,6 +705,7 @@ export default function AdminWargaPage() {
                 Nama Lengkap *
               </Label>
               <Input
+                value={formNama}
                 onChange={(e) => setFormNama(e.target.value.slice(0, 50))}
                 maxLength={50}
                 placeholder="Masukkan nama lengkap"
@@ -768,7 +778,7 @@ export default function AdminWargaPage() {
                   <option value="">-- Tidak ada --</option>
                   {availableHouses.map((h) => (
                     <option key={h.id} value={h.id}>
-                      {h.nomorRumah} - Blok {h.blok} (
+                      Blok {h.blok} - {h.nomorRumah} (
                       {getStatusLabel(h.statusRumah)})
                     </option>
                   ))}
@@ -817,13 +827,13 @@ export default function AdminWargaPage() {
               {bloks.length > 0 ? (
                 <div className="space-y-2">
                   <select
-                    value={newBlokInput ? "__new__" : formBlok}
+                    value={newBlokInput !== null ? "__new__" : formBlok}
                     onChange={(e) => {
                       if (e.target.value === "__new__") {
-                        setNewBlokInput("");
+                        setNewBlokInput(" ");
                       } else {
                         setFormBlok(e.target.value);
-                        setNewBlokInput("");
+                        setNewBlokInput(null);
                       }
                     }}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm"
@@ -835,17 +845,20 @@ export default function AdminWargaPage() {
                     ))}
                     <option value="__new__">+ Blok Baru...</option>
                   </select>
-                  {newBlokInput !== "" && (
+                  {newBlokInput !== null && (
                     <div className="flex items-center gap-2">
                       <Input
                         value={newBlokInput}
                         onChange={(e) => setNewBlokInput(e.target.value)}
-                        placeholder="Nama blok baru"
+                        placeholder="Nama blok baru (contoh: A4, C2)"
                         className="py-2.5"
                         autoFocus
                       />
                       <button
-                        onClick={() => setNewBlokInput("")}
+                        onClick={() => {
+                          setNewBlokInput(null);
+                          setFormBlok(bloks.length > 0 ? bloks[0] : "");
+                        }}
                         className="p-2 hover:bg-slate-100 rounded-lg"
                       >
                         <X className="w-4 h-4 text-slate-400" />
