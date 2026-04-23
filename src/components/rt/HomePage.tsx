@@ -324,10 +324,13 @@ export default function HomePage() {
         {/* Footer */}
         <div className="text-center pt-4 pb-2">
           <p className="text-xs text-slate-400">
-            © 2025 RT Digital - Sistem Manajemen RT Terpadu
+            © 2026 RT Digital - Sistem Manajemen RT Terpadu
           </p>
           <p className="text-[10px] text-slate-300 mt-1">
             Platform SaaS untuk pengelolaan RT/RW se-Indonesia
+          </p>
+          <p className="text-xs text-slate-400">
+            Powered By - YunichTech CMV
           </p>
         </div>
       </div>

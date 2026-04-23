@@ -263,8 +263,9 @@ export default function PublicLanding() {
 
         {/* Footer */}
         <div className="text-center pt-4 pb-2">
-          <p className="text-xs text-slate-400">© 2025 {organization?.name || 'RT Digital'}</p>
+          <p className="text-xs text-slate-400">© 2026 {organization?.name || 'RT Digital'}</p>
           <p className="text-[10px] text-slate-300 mt-1">RT Digital - Sistem Manajemen RT Terpadu</p>
+          <p className="text-[10px] text-slate-300 mt-1">Powered By YunichTech CMV</p>
         </div>
       </div>
 

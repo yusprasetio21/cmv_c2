@@ -577,7 +577,7 @@ export default function AdminSettingsPage() {
                         "{separator} - Separator\n" +
                         "{month} - Bulan (1-12)\n" +
                         "{month_roman} - Bulan Romawi (I-XII)\n" +
-                        "{year} - Tahun (2025)\n" +
+                        "{year} - Tahun (2026)\n" +
                         "{year_short} - Tahun 2 digit (25)",
                     );
                   }}
