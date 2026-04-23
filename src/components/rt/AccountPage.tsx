@@ -2,7 +2,7 @@
 
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
-import { Users, LogOut, Shield, FileText, CreditCard, Bell, Megaphone, Settings, ChevronRight, Mountain } from 'lucide-react'
+import { Users, LogOut, Shield, FileText, CreditCard, Bell, Megaphone, Settings, ChevronRight, Mountain, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -15,6 +15,7 @@ import { formatDate, formatCurrency, getMonthName, getStatusBadgeClass, getStatu
 interface FamilyMember {
   namaLengkap: string
   hubungan: string
+  tempatLahir?: string  // Tambahkan tanda ? karena opsional
   tanggalLahir: string
   pekerjaanSekolah: string
 }
@@ -47,6 +48,7 @@ interface PendingItem {
   createdAt: string
   userId: string
   userName: string
+  buktiName?: string | null
 }
 
 export default function AccountPage() {
@@ -58,6 +60,8 @@ export default function AccountPage() {
   const [familyData, setFamilyData] = useState<FamilyData | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([])
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   // Edit form state
   const [editNamaKk, setEditNamaKk] = useState('')
@@ -97,41 +101,68 @@ export default function AccountPage() {
   }
 
   const fetchPendingItems = async () => {
-    if (!user || user.role !== 'admin') return
-    try {
-      const [payRes, letRes] = await Promise.all([
-        fetch('/api/payments'),
-        fetch('/api/letters'),
-      ])
-      const payments = payRes.ok ? await payRes.json() : []
-      const letters = letRes.ok ? await letRes.json() : []
-      const items: PendingItem[] = [
-        ...payments
-          .filter((p: { status: string }) => p.status === 'pending')
-          .map((p: { id: string; tahun: number; bulan: number; nominal: number; createdAt: string; userId: string; user: { namaLengkap: string } }) => ({
-            id: p.id,
-            type: 'payment' as const,
-            detail: `Iuran ${getMonthName(p.bulan)} ${p.tahun} - ${formatCurrency(p.nominal)}`,
-            status: p.status,
-            createdAt: p.createdAt,
-            userId: p.userId,
-            userName: p.user?.namaLengkap || '-',
-          })),
-        ...letters
-          .filter((l: { status: string }) => l.status === 'pending')
-          .map((l: { id: string; jenisSurat: string; createdAt: string; userId: string; user: { namaLengkap: string } }) => ({
-            id: l.id,
-            type: 'letter' as const,
-            detail: `Surat ${l.jenisSurat}`,
-            status: l.status,
-            createdAt: l.createdAt,
-            userId: l.userId,
-            userName: l.user?.namaLengkap || '-',
-          })),
-      ]
-      setPendingItems(items)
-    } catch { /* ignore */ }
-  }
+  if (!user || user.role !== 'admin') return
+  try {
+    const [payRes, letRes] = await Promise.all([
+      fetch('/api/payments'),
+      fetch('/api/letters'),
+    ])
+    
+    // Tipe untuk payment
+    interface PaymentType {
+      id: string
+      tahun: number
+      bulan: number
+      nominal: number
+      status: string
+      createdAt: string
+      userId: string
+      user: { namaLengkap: string }
+      buktiName: string | null
+    }
+    
+    // Tipe untuk letter
+    interface LetterType {
+      id: string
+      jenisSurat: string
+      status: string
+      createdAt: string
+      userId: string
+      user: { namaLengkap: string }
+    }
+    
+    const payments = payRes.ok ? (await payRes.json() as PaymentType[]) : []
+    const letters = letRes.ok ? (await letRes.json() as LetterType[]) : []
+    
+    const items: PendingItem[] = [
+      ...payments
+        .filter((p: PaymentType) => p.status === 'pending')
+        .map((p: PaymentType) => ({
+          id: p.id,
+          type: 'payment' as const,
+          detail: `Iuran ${getMonthName(p.bulan)} ${p.tahun} - ${formatCurrency(p.nominal)}`,
+          status: p.status,
+          createdAt: p.createdAt,
+          userId: p.userId,
+          userName: p.user?.namaLengkap || '-',
+          buktiName: p.buktiName,
+        })),
+      ...letters
+        .filter((l: LetterType) => l.status === 'pending')
+        .map((l: LetterType) => ({
+          id: l.id,
+          type: 'letter' as const,
+          detail: `Surat ${l.jenisSurat}`,
+          status: l.status,
+          createdAt: l.createdAt,
+          userId: l.userId,
+          userName: l.user?.namaLengkap || '-',
+          buktiName: null,
+        })),
+    ]
+    setPendingItems(items)
+  } catch { /* ignore */ }
+}
 
   useEffect(() => {
     if (loadFamilyDataRef.current) return
@@ -204,6 +235,11 @@ export default function AccountPage() {
       toast.success('Ditolak')
       fetchPendingItems()
     }
+  }
+
+  const handleViewBukti = (buktiUrl: string) => {
+    setPreviewImage(buktiUrl)
+    setPreviewOpen(true)
   }
 
   const handleLogout = () => {
@@ -543,7 +579,7 @@ export default function AccountPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Admin Approval Modal */}
+      {/* Admin Approval Modal dengan Preview Gambar */}
       <Dialog open={adminOpen} onOpenChange={setAdminOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -563,6 +599,20 @@ export default function AccountPage() {
                       </div>
                       <span className="text-xs text-slate-400">{formatDate(item.createdAt)}</span>
                     </div>
+                    
+                    {/* Tombol Lihat Bukti untuk payment */}
+                    {item.type === 'payment' && item.buktiName && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => handleViewBukti(item.buktiName!)}
+                          className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1 bg-teal-50 px-3 py-1.5 rounded-lg"
+                        >
+                          <Eye className="w-3 h-3" />
+                          Lihat Bukti Transfer
+                        </button>
+                      </div>
+                    )}
+                    
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" onClick={() => handleApprove(item)} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white">
                         Setujui
@@ -576,6 +626,29 @@ export default function AccountPage() {
               )}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Preview Gambar Bukti */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Preview Bukti Transfer</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center p-4">
+            {previewImage && (
+              <img 
+                src={previewImage} 
+                alt="Bukti Transfer" 
+                className="max-w-full max-h-[70vh] rounded-lg shadow-lg"
+              />
+            )}
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setPreviewOpen(false)} variant="outline">
+              Tutup
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

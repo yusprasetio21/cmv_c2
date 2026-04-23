@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
       id: data.id,
       userId: data.user_id,
       namaKk: data.nama_kk,
+      nik: data.nik,                           // TAMBAHKAN
+      nikAnggota: data.nik_anggota,            // TAMBAHKAN
       tempatLahir: data.tempat_lahir,
       tanggalLahir: data.tanggal_lahir,
       jenisKelamin: data.jenis_kelamin,
@@ -44,7 +46,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, namaKk, tempatLahir, tanggalLahir, jenisKelamin, agama, pekerjaan, noHp, members } = body
+    const { 
+      userId, 
+      namaKk, 
+      nik,                      // TAMBAHKAN
+      nikAnggota,               // TAMBAHKAN
+      tempatLahir, 
+      tanggalLahir, 
+      jenisKelamin, 
+      agama, 
+      pekerjaan, 
+      noHp, 
+      members 
+    } = body
 
     if (!userId) {
       return NextResponse.json({ error: 'userId diperlukan' }, { status: 400 })
@@ -55,6 +69,8 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: userId,
         nama_kk: namaKk || '',
+        nik: nik || null,                      // TAMBAHKAN
+        nik_anggota: nikAnggota || [],         // TAMBAHKAN
         tempat_lahir: tempatLahir || '',
         tanggal_lahir: tanggalLahir || null,
         jenis_kelamin: jenisKelamin || '',
@@ -79,7 +95,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, namaKk, tempatLahir, tanggalLahir, jenisKelamin, agama, pekerjaan, noHp, members } = body
+    const { 
+      userId, 
+      namaKk, 
+      nik,                      // TAMBAHKAN
+      nikAnggota,               // TAMBAHKAN
+      tempatLahir, 
+      tanggalLahir, 
+      jenisKelamin, 
+      agama, 
+      pekerjaan, 
+      noHp, 
+      members 
+    } = body
 
     if (!userId) {
       return NextResponse.json({ error: 'userId diperlukan' }, { status: 400 })
@@ -89,6 +117,8 @@ export async function PUT(request: NextRequest) {
       .from('families')
       .update({
         nama_kk: namaKk || '',
+        nik: nik || null,                      // TAMBAHKAN
+        nik_anggota: nikAnggota || [],         // TAMBAHKAN
         tempat_lahir: tempatLahir || '',
         tanggal_lahir: tanggalLahir || null,
         jenis_kelamin: jenisKelamin || '',

@@ -316,6 +316,7 @@ export default function SuratPage() {
 
     return (
       <div className="bg-white p-8 max-w-2xl mx-auto" id="letter-document">
+        {/* ========== HEADER / KOP SURAT (TANPA STEMPEL) ========== */}
         <div className="text-center mb-5 border-b-2 border-black pb-3">
           <div className="flex items-center justify-center gap-3 mb-1">
             {rtAddr.logoUrl && <img src={rtAddr.logoUrl} alt="Logo" className="w-14 h-14 object-contain" />}
@@ -324,15 +325,19 @@ export default function SuratPage() {
               <p className="text-xs font-bold tracking-wide">{rtAddr.letterHeader}</p>
               <p className="text-xs font-bold tracking-wide">{rtAddr.letterSubHeader}</p>
             </div>
-            {rtAddr.stampUrl && <img src={rtAddr.stampUrl} alt="Stempel" className="w-14 h-14 object-contain opacity-40" />}
+            {/* Stempel TIDAK ADA di header - hanya logo dan teks */}
           </div>
         </div>
+
+        {/* Judul Surat */}
         <div className="text-center font-bold text-base underline mb-2">
           SURAT KETERANGAN {typeName.toUpperCase()}
         </div>
         <p className="text-center text-xs mb-4">
           No. {num}/Sekrt-RT/{getRomanMonth(new Date().getMonth() + 1)}/{new Date().getFullYear()}
         </p>
+
+        {/* Isi Surat */}
         <div className="text-sm leading-relaxed mb-4">
           <p className="mb-3">
             Yang bertanda tangan di bawah ini Ketua {rtAddr.fullAddress}
@@ -344,6 +349,8 @@ export default function SuratPage() {
           </p>
           <p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
         </div>
+
+        {/* ========== FOOTER / TANDA TANGAN (STEMPEL DI SINI) ========== */}
         <div className="text-right mt-10">
           <p className="mr-16 mb-1 text-sm">{rtAddr.letterLocation}, {formatDateLong(new Date().toISOString())}</p>
           <p className="mr-16 mb-8 text-sm">Ketua RT {rtAddr.rt} RW {rtAddr.rw}</p>
@@ -354,9 +361,9 @@ export default function SuratPage() {
               {rtAddr.signatureUrl && (
                 <img src={rtAddr.signatureUrl} alt="TTD" className="w-24 h-16 object-contain mt-1 mx-auto" />
               )}
-              {/* Stamp overlay */}
+              {/* Stempel hanya di footer */}
               {rtAddr.stampUrl && (
-                <img src={rtAddr.stampUrl} alt="Stempel" className="w-20 h-20 object-contain absolute -right-4 bottom-0 opacity-30 rotate-12" />
+                <img src={rtAddr.stampUrl} alt="Stempel" className="w-20 h-20 object-contain absolute -right-4 bottom-0 opacity-80" />
               )}
               {!rtAddr.signatureUrl && !rtAddr.stampUrl && (
                 <div className="mt-2 inline-flex w-24 h-24 border-4 border-blue-600 rounded-full items-center justify-center opacity-30 rotate-12">

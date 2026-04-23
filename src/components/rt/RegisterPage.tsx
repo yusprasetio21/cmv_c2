@@ -28,7 +28,7 @@ export default function RegisterPage({ onBack, onSuccess }: RegisterPageProps) {
   const [rtNumber, setRtNumber] = useState('')
   const [rwNumber, setRwNumber] = useState('')
   const [ketuaRtName, setKetuaRtName] = useState('')
-  const [iuranNominal, setIuranNominal] = useState('150000')
+  const [iuranNominal, setIuranNominal] = useState('80000')
 
   // Step 2: Uploads
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -131,7 +131,7 @@ export default function RegisterPage({ onBack, onSuccess }: RegisterPageProps) {
           logoUrl,
           stampUrl,
           signatureUrl: sigUrl,
-          iuranNominal: parseInt(iuranNominal) || 150000,
+          iuranNominal: parseInt(iuranNominal) || 80000,
           adminUsername,
           adminPassword,
           adminName,
@@ -288,7 +288,7 @@ export default function RegisterPage({ onBack, onSuccess }: RegisterPageProps) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-slate-700 mb-1.5">Nominal Iuran IPL (Rp)</Label>
-                <Input type="number" value={iuranNominal} onChange={(e) => setIuranNominal(e.target.value)} placeholder="150000" className="py-2.5" />
+                <Input type="number" value={iuranNominal} onChange={(e) => setIuranNominal(e.target.value)} placeholder="80000" className="py-2.5" />
               </div>
               <Button onClick={() => { if (validateStep1()) setStep(2) }} className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl">
                 Lanjut Upload →

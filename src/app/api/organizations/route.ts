@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         logo_url: logoUrl || null,
         stamp_url: stampUrl || null,
         signature_url: signatureUrl || null,
-        iuran_nominal: iuranNominal || 150000,
+        iuran_nominal: iuranNominal || 80000,
       })
       .select()
       .single()
@@ -193,7 +193,7 @@ function mapOrg(data: Record<string, unknown>) {
     logoUrl: data.logo_url || null,
     stampUrl: data.stamp_url || null,
     signatureUrl: data.signature_url || null,
-    iuranNominal: data.iuran_nominal || 150000,
+    iuranNominal: data.iuran_nominal || 80000,
     createdAt: data.created_at,
   }
 }

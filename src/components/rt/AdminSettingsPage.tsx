@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
           rtNumber,
           rwNumber,
           ketuaRtName,
-          iuranNominal: parseInt(iuranNominal) || 150000,
+          iuranNominal: parseInt(iuranNominal) || 80000,
           addressFull: addressFull || `${name} RT ${rtNumber} RW ${rwNumber} Desa ${kelurahan} Kecamatan ${kecamatan} ${kabupaten} ${province}`,
           logoUrl,
           stampUrl,
