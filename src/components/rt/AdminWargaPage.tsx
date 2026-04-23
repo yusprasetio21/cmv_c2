@@ -342,7 +342,7 @@ export default function AdminWargaPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'occupied': return 'Terisi'
-      case 'rented': return 'Disewakan'
+      case 'rented': return 'Sewa'
       case 'renovation': return 'Renovasi'
       default: return 'Kosong'
     }
@@ -720,7 +720,7 @@ export default function AdminWargaPage() {
               >
                 <option value="empty">Kosong</option>
                 <option value="occupied">Terisi</option>
-                <option value="rented">Disewakan</option>
+                <option value="rented">Sewa</option>
                 <option value="renovation">Renovasi</option>
               </select>
             </div>

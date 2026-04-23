@@ -80,7 +80,7 @@ export default function DenahPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'occupied': return 'Terisi'
-      case 'rented': return 'Disewakan'
+      case 'rented': return 'Sewa'
       case 'renovation': return 'Renovasi'
       default: return 'Kosong'
     }
