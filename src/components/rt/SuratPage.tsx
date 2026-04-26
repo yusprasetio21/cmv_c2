@@ -727,7 +727,7 @@ export default function SuratPage() {
             </div>
           ) : (
             <div className="mr-16 text-center text-slate-400 italic text-sm border-2 border-dashed border-slate-300 rounded-lg p-4 inline-block">
-              <p>Tanda Tangan &amp; Stempel</p>
+              
               <p className="text-xs">(Setelah disetujui)</p>
             </div>
           )}
